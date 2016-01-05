@@ -65,26 +65,33 @@ public class Queue extends SyncPrimitive {
     int consume() throws KeeperException, InterruptedException {
         Stat stat = null;
 
-        // Get the first element available
+        //无限循环获取消息
         while (true) {
             synchronized (mutex) {
+                //获取根节点的子节点,也就是消息,并且监听ChildChanged事件
                 List<String> list = zk.getChildren(root, true);
                 System.out.println("size:" + list.size());
                 if (list.isEmpty()) {
                     System.out.println("Going to wait");
+                    //如果当前没有消息,则在mutex对象上等待
                     mutex.wait();
                 } else {
+                    //截取数字
                     Integer min = new Integer(list.get(0).substring(7));
                     String id = list.get(0);
                     for (String s : list) {
                         System.out.println("queue's elements : " + s);
                         Integer tempValue = new Integer(s.substring(7));
+                        //选取最小的进行处理,也就是最早插入的消息
                         if (tempValue < min) id = s;
                     }
+                    //获取消息
                     byte[] b = zk.getData(root + "/" + id, false, stat);
+                    //删除消息
                     zk.delete(root + "/" + id, 0);
                     ByteBuffer buffer = ByteBuffer.wrap(b);
                     int value = buffer.getInt();
+                    //消费掉消息,本示例就是简单的打印
                     System.out.println("element has been consumed: " + root + "/" + id + "  the value is:" + value);
                 }
             }
